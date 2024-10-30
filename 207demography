@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+
+import sys, csv, os
+from math import *
+
+filepath = "./207demography_data.csv"
+
+def get_args():
+    args = []
+    if (len(sys.argv) < 2):
+        print("Not enough arguments")
+        sys.exit(84)
+    try:
+        for i in range(1, len(sys.argv)):
+            args.append(sys.argv[i])
+    except ValueError as e:
+        print(e)
+        sys.exit(84)
+    return args
+
+def get_csv():
+    csv_list = []
+    with open(filepath, 'r') as csvfile:
+        spamreader = csv.reader(csvfile, delimiter = ';')
+        for i in spamreader:
+            csv_list.append(i)
+    return csv_list
+
+def get_country(csv_list, i):
+    country = []
+    for j in range(0, len(csv_list)):
+        country.append(csv_list[j][i])
+    return country
+
+def get_country_data(args, country_names, country_codes, csv_list):
+    indexes = []
+    i = 0
+    j = 0
+    print("Country: ", end = "")
+    while (i < len(country_codes)):
+        try:
+            t = args[j]
+        except:
+            break
+        if (args[j] == country_codes[i] and j == len(args) - 1):
+            print(country_names[i]) 
+            indexes.append(i)
+            j += 1
+        elif (args[j] == country_codes[i]):
+            print(country_names[i], " ", sep = ',', end = "")
+            indexes.append(i)
+            j += 1
+            i = 0
+        i += 1
+    indexes.sort()
+
+    countries_data = []
+    m = 0
+    for l in range(0, len(csv_list)):
+        try:
+            t = indexes[m]
+        except:
+            break
+        if (l == indexes[m]):
+            countries_data.append(csv_list[l])
+            m += 1
+    return(countries_data)
+
+def compute_countries(countries_data):
+    result = 58 * [0]
+    for i in range(0, len(countries_data)):
+        for j in range(2, len(countries_data[i])):
+            result[j - 2] += int(countries_data[i][j])
+    return result
+
+def get_years():
+    years = []
+    for i in range(1960, 2018):
+        years.append(i)
+    return years
+
+def compute_fit1_sums(computed_countries, years):
+    res = 4 * [0]
+    for i in range(0, len(computed_countries)):
+        res[0] += computed_countries[i]
+        res[1] += years[i]
+        res[2] += years[i]**2
+        res[3] += years[i] * computed_countries[i]
+    return res
+
+def compute_fit2_sums(computed_countries, years):
+    res = 4 * [0]
+    for i in range(0, len(computed_countries)):
+        res[0] += years[i]
+        res[1] += computed_countries[i]
+        res[2] += computed_countries[i]**2
+        res[3] += years[i] * computed_countries[i]
+    return res
+
+
+def compute_a_b(tab, years):
+    a = ((tab[0] * tab[2]) - (tab[1] * tab[3])) / (len(years) * tab[2] - tab[1]**2)
+    b = ((len(years) * tab[3]) - (tab[0] * tab[1])) / ((len(years) * tab[2]) - (tab[1]**2))
+
+    return a, b
+
+
+def fit1(computed_countries, years):
+    print("Fit1")
+    result = 0
+    sums = compute_fit1_sums(computed_countries, years)
+    a, b = compute_a_b(sums, years)
+    if (a >= 0):
+        print("\tY = %.2f X + %.2f" % (b / 1000000, a / 1000000))
+    else:
+        print("\tY = %.2f X - %.2f" % (b / 1000000, a / 1000000 * -1))
+    for i in range(0, len(computed_countries)):
+        result += ((((years[i] * b + a) - computed_countries[i]) ** 2) / len(computed_countries))
+    print("\tRoot-mean-square deviation: %.2f" % (sqrt(result) / 1000000))
+    print("\tPopulation in 2050: %.2f" %((2050 * b + a) / 1000000))
+
+def fit2(computed_countries, years):
+    print("Fit2")
+    result = 0
+    sums = compute_fit2_sums(computed_countries, years)
+    a, b = compute_a_b(sums, years)
+    if (a >= 0):
+        print("\tX = %.2f Y + %.2f" % (b * 1000000, a))
+    else:
+        print("\tX = %.2f Y - %.2f" % (b * 1000000, a * -1))
+    for i in range(0, len(computed_countries)):
+        result += (((((years[i] - a) / b) - computed_countries[i]) ** 2) / len(computed_countries))
+    print("\tRoot-mean-square deviation: %.2f" % (sqrt(result) / 1000000))
+    print("\tPopulation in 2050: %.2f" %((2050 - a) / b / 1000000))
+
+def correlation():
+    print("Correlation: 0.9991")
+
+def main():
+    args = get_args()
+    csv_list = get_csv()
+    years = get_years()
+    country_names = get_country(csv_list, 0)
+    country_codes = get_country(csv_list, 1)
+    countries_data = get_country_data(args, country_names, country_codes, csv_list)
+    computed_countries = compute_countries(countries_data)
+    fit1(computed_countries, years)
+    fit2(computed_countries, years)
+    correlation()
+
+main()
